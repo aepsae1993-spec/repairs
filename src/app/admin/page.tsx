@@ -17,7 +17,7 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
 
   useEffect(() => {
-    const p = sessionStorage.getItem("admin-pass");
+    const p = localStorage.getItem("admin-pass");
     if (p) {
       setPassword(p);
       setAuthed(true);
@@ -38,7 +38,7 @@ export default function AdminPage() {
         <button
           className="btn-primary w-full"
           onClick={() => {
-            sessionStorage.setItem("admin-pass", password);
+            localStorage.setItem("admin-pass", password);
             setAuthed(true);
           }}
         >
@@ -48,7 +48,7 @@ export default function AdminPage() {
     );
   }
 
-  return <AdminList password={password} onLogout={() => { sessionStorage.removeItem("admin-pass"); setAuthed(false); }} />;
+  return <AdminList password={password} onLogout={() => { localStorage.removeItem("admin-pass"); setAuthed(false); }} />;
 }
 
 function AdminList({ password, onLogout }: { password: string; onLogout: () => void }) {
@@ -94,6 +94,22 @@ function AdminList({ password, onLogout }: { password: string; onLogout: () => v
     setBusyId(null);
   }
 
+  async function deleteRepair(id: string, title: string) {
+    if (!confirm(`ลบรายการ "${title}" ?\nการลบไม่สามารถย้อนกลับได้`)) return;
+    setBusyId(id);
+    const res = await fetch(`/api/repairs/${id}`, {
+      method: "DELETE",
+      headers: { "x-admin-password": password }
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      alert(json.error || "ลบไม่สำเร็จ");
+    } else {
+      setItems((prev) => prev.filter((r) => r.id !== id));
+    }
+    setBusyId(null);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -125,7 +141,13 @@ function AdminList({ password, onLogout }: { password: string; onLogout: () => v
       ) : (
         <div className="space-y-3">
           {filtered.map((r) => (
-            <RepairCard key={r.id} repair={r} busy={busyId === r.id} onAction={updateStatus} />
+            <RepairCard
+              key={r.id}
+              repair={r}
+              busy={busyId === r.id}
+              onAction={updateStatus}
+              onDelete={deleteRepair}
+            />
           ))}
         </div>
       )}
@@ -136,11 +158,13 @@ function AdminList({ password, onLogout }: { password: string; onLogout: () => v
 function RepairCard({
   repair,
   busy,
-  onAction
+  onAction,
+  onDelete
 }: {
   repair: Repair;
   busy: boolean;
   onAction: (id: string, status: RepairStatus, extra?: { handler?: string }) => void;
+  onDelete: (id: string, title: string) => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -205,6 +229,15 @@ function RepairCard({
             เสร็จเมื่อ {repair.completed_at ? new Date(repair.completed_at).toLocaleString("th-TH") : "-"}
           </span>
         )}
+
+        <button
+          disabled={busy}
+          onClick={() => onDelete(repair.id, repair.title)}
+          className="btn text-sm bg-red-50 text-red-700 ring-1 ring-red-200 hover:bg-red-100 ml-auto"
+          title="ลบรายการนี้"
+        >
+          🗑️ ลบ
+        </button>
       </div>
     </div>
   );
