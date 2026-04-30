@@ -1,12 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export default function Home() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<null | { id: string }>(null);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+
+  function pickFile(f: File | null) {
+    setFile(f);
+    setPreview(f ? URL.createObjectURL(f) : null);
+  }
+
+  function clearFile() {
+    setFile(null);
+    setPreview(null);
+    if (cameraRef.current) cameraRef.current.value = "";
+    if (galleryRef.current) galleryRef.current.value = "";
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -15,10 +30,12 @@ export default function Home() {
 
     try {
       const fd = new FormData(e.currentTarget);
-      const file = fd.get("file") as File | null;
 
       let imageUrl: string | null = null;
       if (file && file.size > 0) {
+        // ใช้ไฟล์จาก state — ครอบคลุมทั้งกล้องและคลัง
+        // (ลบไฟล์จาก FormData กันทับกัน)
+        fd.delete("file");
         const upFd = new FormData();
         upFd.append("file", file);
         const upRes = await fetch("/api/upload", { method: "POST", body: upFd });
@@ -43,7 +60,7 @@ export default function Home() {
       if (!res.ok) throw new Error(json.error || "ส่งคำขอไม่สำเร็จ");
       setDone({ id: json.data.id });
       (e.target as HTMLFormElement).reset();
-      setPreview(null);
+      clearFile();
     } catch (err) {
       setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
     } finally {
@@ -103,28 +120,58 @@ export default function Home() {
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">รูปประกอบ</label>
-          <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-brand-300 rounded-xl p-6 bg-brand-50/50 cursor-pointer hover:bg-brand-50 transition">
-            {preview ? (
-              <img src={preview} alt="preview" className="max-h-64 rounded-lg" />
-            ) : (
-              <>
-                <span className="text-4xl">📷</span>
-                <span className="text-sm text-brand-700 font-medium">แตะเพื่อเลือก/ถ่ายรูป</span>
-                <span className="text-xs text-slate-500">รองรับ JPG, PNG (ไม่เกิน 8MB)</span>
-              </>
-            )}
-            <input
-              type="file"
-              name="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                setPreview(f ? URL.createObjectURL(f) : null);
-              }}
-            />
-          </label>
+
+          {/* hidden inputs — ตัวจัดการการเลือกไฟล์จริง */}
+          <input
+            ref={galleryRef}
+            type="file"
+            name="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+          />
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+          />
+
+          {preview ? (
+            <div className="rounded-xl border-2 border-brand-200 bg-white p-3 space-y-3">
+              <img src={preview} alt="preview" className="max-h-64 mx-auto rounded-lg" />
+              <div className="flex gap-2 justify-center">
+                <button type="button" onClick={() => galleryRef.current?.click()} className="btn-ghost text-sm">
+                  🔁 เปลี่ยนรูป
+                </button>
+                <button type="button" onClick={clearFile} className="btn text-sm bg-red-50 text-red-700 ring-1 ring-red-200 hover:bg-red-100">
+                  🗑️ ลบ
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => galleryRef.current?.click()}
+                className="flex flex-col items-center justify-center gap-1 border-2 border-dashed border-brand-300 rounded-xl p-5 bg-brand-50/50 hover:bg-brand-50 active:scale-[.98] transition"
+              >
+                <span className="text-3xl">🖼️</span>
+                <span className="text-sm text-brand-700 font-medium">เลือกจากคลัง</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => cameraRef.current?.click()}
+                className="flex flex-col items-center justify-center gap-1 border-2 border-dashed border-brand-300 rounded-xl p-5 bg-brand-50/50 hover:bg-brand-50 active:scale-[.98] transition"
+              >
+                <span className="text-3xl">📷</span>
+                <span className="text-sm text-brand-700 font-medium">ถ่ายรูป</span>
+              </button>
+            </div>
+          )}
+          <p className="text-xs text-slate-500 mt-2">รองรับ JPG, PNG (ไม่เกิน 8MB)</p>
         </div>
 
         {error && (

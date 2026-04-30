@@ -30,7 +30,7 @@ async function pushToGroup(messages: LineMessage[]) {
 
 export async function replyMessages(replyToken: string, messages: LineMessage[]) {
   if (!TOKEN) {
-    console.warn("LINE token not set — skip reply");
+    console.warn("[LINE reply] LINE_CHANNEL_ACCESS_TOKEN not set — skip");
     return;
   }
   const res = await fetch("https://api.line.me/v2/bot/message/reply", {
@@ -43,7 +43,9 @@ export async function replyMessages(replyToken: string, messages: LineMessage[])
   });
   if (!res.ok) {
     const txt = await res.text();
-    console.error("LINE reply error:", res.status, txt);
+    console.error("[LINE reply] error", res.status, txt);
+  } else {
+    console.log("[LINE reply] ok");
   }
 }
 

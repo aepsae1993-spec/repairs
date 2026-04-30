@@ -82,14 +82,16 @@ async function fetchRepairs(status: RepairStatus | null, limit = 20): Promise<Re
 export async function POST(req: Request) {
   const raw = await req.text();
   const sig = req.headers.get("x-line-signature");
+  console.log("[LINE webhook] received", { hasSig: !!sig, bytes: raw.length });
 
   // ถ้ามี secret ตั้งไว้ → ตรวจ signature; ถ้าไม่ตั้ง → เตือนแล้วผ่าน (เผื่อ dev)
   if (process.env.LINE_CHANNEL_SECRET) {
     if (!verifyLineSignature(raw, sig)) {
+      console.error("[LINE webhook] invalid signature — เช็ค LINE_CHANNEL_SECRET ใน Vercel");
       return NextResponse.json({ error: "invalid signature" }, { status: 401 });
     }
   } else {
-    console.warn("LINE_CHANNEL_SECRET not set — skipping signature verify");
+    console.warn("[LINE webhook] LINE_CHANNEL_SECRET not set — skipping verify");
   }
 
   let body: { events?: Event[] };
@@ -100,15 +102,23 @@ export async function POST(req: Request) {
   }
 
   const events = body.events || [];
+  console.log(
+    "[LINE webhook] events:",
+    events.map((e) => ({ type: e.type, src: e.source?.type, text: e.message?.text }))
+  );
   await Promise.all(events.map(handleEvent));
 
   return NextResponse.json({ ok: true });
 }
 
 async function handleEvent(ev: Event) {
-  if (ev.type !== "message" || ev.message?.type !== "text" || !ev.replyToken) return;
+  if (ev.type !== "message" || ev.message?.type !== "text" || !ev.replyToken) {
+    console.log("[LINE webhook] skip event:", ev.type, ev.message?.type);
+    return;
+  }
   const text = ev.message.text || "";
   const cmd = matchCommand(text);
+  console.log("[LINE webhook] text:", text, "matched:", cmd?.kind ?? "none");
   if (!cmd) return; // เงียบไว้ ไม่ตอบทุกข้อความ
 
   if (cmd.kind === "help") {
