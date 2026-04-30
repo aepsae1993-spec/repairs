@@ -1,0 +1,32 @@
+@import url("https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #fff7ed;
+}
+
+html, body {
+  background: linear-gradient(180deg, #fff7ed 0%, #ffe8d2 100%);
+  min-height: 100vh;
+  color: #1f2937;
+}
+
+* { font-family: "Prompt", system-ui, sans-serif; }
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-medium transition active:scale-[.98];
+}
+.btn-primary { @apply btn bg-brand-500 text-white hover:bg-brand-600 shadow-lg shadow-brand-500/30; }
+.btn-ghost   { @apply btn bg-white text-brand-700 ring-1 ring-brand-200 hover:bg-brand-50; }
+.input {
+  @apply w-full rounded-xl border border-brand-200 bg-white px-4 py-2.5 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200 transition;
+}
+.card {
+  @apply rounded-2xl bg-white shadow-md shadow-orange-100 ring-1 ring-orange-100/70 p-5;
+}
+.badge {
+  @apply inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold;
+}
