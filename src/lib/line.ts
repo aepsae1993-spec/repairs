@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import type { Repair, RepairStatus } from "./types";
 import { STATUS_LABEL } from "./types";
+import { toDisplayImage } from "./image";
 
 const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN!;
 const GROUP_ID = process.env.LINE_GROUP_ID!;
@@ -93,7 +94,7 @@ function bubble(repair: Repair, headline: string, lines: { label: string; value:
       ? {
           hero: {
             type: "image",
-            url: repair.image_url,
+            url: toDisplayImage(repair.image_url, 1024)!,
             size: "full",
             aspectRatio: "20:13",
             aspectMode: "cover"

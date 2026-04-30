@@ -32,8 +32,8 @@ function doPost(e) {
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
     const id = file.getId();
-    // ใช้ลิงก์รูปแบบ direct ที่ LINE/img tag ดึงได้
-    const url = 'https://drive.google.com/uc?export=view&id=' + id;
+    // ใช้รูปแบบ thumbnail ที่ฝัง <img> ได้ (แบบ uc?export=view โดน Google block hotlink แล้ว)
+    const url = 'https://drive.google.com/thumbnail?id=' + id + '&sz=w1600';
     return _json({ url: url, id: id });
   } catch (err) {
     return _json({ error: String(err) });

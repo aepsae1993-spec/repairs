@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Repair, RepairStatus } from "@/lib/types";
 import { STATUS_LABEL, STATUS_COLOR } from "@/lib/types";
+import { toDisplayImage } from "@/lib/image";
 
 const FILTERS: { key: "all" | RepairStatus; label: string }[] = [
   { key: "all", label: "ทั้งหมด" },
@@ -194,7 +195,12 @@ function RepairCard({
         </div>
         {repair.image_url && (
           <a href={repair.image_url} target="_blank" rel="noreferrer" className="shrink-0">
-            <img src={repair.image_url} alt="" className="w-20 h-20 object-cover rounded-xl ring-1 ring-orange-100" />
+            <img
+              src={toDisplayImage(repair.image_url, 400) || ""}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="w-20 h-20 object-cover rounded-xl ring-1 ring-orange-100 bg-orange-50"
+            />
           </a>
         )}
       </div>
