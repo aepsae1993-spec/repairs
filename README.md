@@ -57,15 +57,34 @@
 
 1. สร้าง Provider + Channel (Messaging API) ที่ https://developers.line.biz/console
 2. ในหน้า Channel:
-   - เปิด **Use webhooks** (จะเปิดหรือไม่ก็ได้ — เราใช้แค่ push)
+   - **Channel secret** (Basic settings) → `LINE_CHANNEL_SECRET`
    - กด **Issue** เอา **Channel access token (long-lived)** → `LINE_CHANNEL_ACCESS_TOKEN`
-3. **เพิ่ม LINE OA เข้ากลุ่มที่ต้องการ** (ปิด "Auto-reply" ได้ตามใจ)
-4. หา **Group ID**: วิธีง่ายที่สุดคือ
-   - เปิด webhook ของ channel ชั่วคราว ชี้ไปที่ webhook.site
-   - ส่งข้อความในกลุ่มหา OA — ดู `source.groupId` ใน payload
-   - นำมาใส่ `LINE_GROUP_ID`
+   - ปิด **Auto-reply messages** (LINE Official Account Manager) ป้องกันบอตตอบ default
+   - เปิด **Use webhooks**
+3. ตั้ง **Webhook URL** เป็น `https://<your-vercel-domain>/api/line/webhook` แล้วกด **Verify**
+4. **เพิ่ม LINE OA เข้ากลุ่มที่ต้องการ**
+5. หา **Group ID** — ในกลุ่มที่เพิ่มบอตเข้าไปแล้ว พิมพ์ว่า
+   ```
+   /id
+   ```
+   บอตจะตอบ Group ID กลับมา → ก๊อปไปใส่ `LINE_GROUP_ID` แล้ว redeploy
 
-> หากยังไม่ได้ตั้ง token/group ID ระบบจะข้ามการแจ้งเตือนโดยไม่ error
+> หากยังไม่ได้ตั้ง token/group ID ระบบจะข้ามการแจ้งเตือนโดยไม่ error  
+> หากยังไม่ตั้ง `LINE_CHANNEL_SECRET` webhook จะทำงานแบบไม่ verify signature (ใช้สำหรับ dev เท่านั้น)
+
+#### 🤖 คำสั่งที่บอตตอบในกลุ่ม
+
+| คำสั่ง (พิมพ์ในกลุ่ม) | ผลลัพธ์ |
+|---|---|
+| `/id` หรือ `ขอไอดี` | ตอบ Group ID ของกลุ่มปัจจุบัน |
+| `/list` หรือ `ดูทั้งหมด` | รายการแจ้งซ่อมทุกสถานะ (12 ล่าสุด) |
+| `ดูรอรับเรื่อง` หรือ `/pending` | เฉพาะที่ยังไม่มีคนรับ |
+| `ดูรับเรื่องแล้ว` หรือ `/accepted` | เฉพาะที่รับเรื่องแล้ว |
+| `ดูกำลังดำเนินการ` หรือ `/inprogress` | เฉพาะที่กำลังซ่อม |
+| `ดูเสร็จสิ้น` หรือ `/done` | เฉพาะที่เสร็จแล้ว |
+| `/help` | แสดงคำสั่งทั้งหมด |
+
+ข้อความอื่น ๆ บอตจะเงียบไม่ตอบ
 
 ### 4) ตั้งค่าตัวแปรแวดล้อม
 
@@ -121,7 +140,8 @@ http://localhost:3000/admin — หน้าผู้ดูแล (ใส่ `AD
 │   │   └── api/
 │   │       ├── repairs/route.ts          # GET list, POST create
 │   │       ├── repairs/[id]/route.ts     # PATCH อัปเดตสถานะ
-│   │       └── upload/route.ts           # proxy ไปยัง Apps Script
+│   │       ├── upload/route.ts           # proxy ไปยัง Apps Script
+│   │       └── line/webhook/route.ts     # รับ webhook จาก LINE (reply คำสั่ง)
 │   └── lib/
 │       ├── supabase.ts            # supabase admin client
 │       ├── line.ts                # ส่ง flex message
