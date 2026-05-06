@@ -15,44 +15,117 @@ const FILTERS: { key: "all" | RepairStatus; label: string }[] = [
 
 export default function AdminPage() {
   const [password, setPassword] = useState<string>("");
+  const [adminName, setAdminName] = useState<string>("");
   const [authed, setAuthed] = useState(false);
+  const [loginErr, setLoginErr] = useState<string | null>(null);
+  const [loggingIn, setLoggingIn] = useState(false);
 
   useEffect(() => {
     const p = localStorage.getItem("admin-pass");
+    const n = localStorage.getItem("admin-name") || "";
     if (p) {
       setPassword(p);
+      setAdminName(n);
       setAuthed(true);
     }
   }, []);
+
+  async function handleLogin() {
+    setLoginErr(null);
+    if (!password.trim()) {
+      setLoginErr("กรุณากรอกรหัสผ่าน");
+      return;
+    }
+    setLoggingIn(true);
+    try {
+      const res = await fetch("/api/admin/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+      });
+      if (!res.ok) {
+        setLoginErr("รหัสผ่านไม่ถูกต้อง");
+        return;
+      }
+      localStorage.setItem("admin-pass", password);
+      if (adminName.trim()) localStorage.setItem("admin-name", adminName.trim());
+      setAuthed(true);
+    } catch {
+      setLoginErr("เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง");
+    } finally {
+      setLoggingIn(false);
+    }
+  }
 
   if (!authed) {
     return (
       <div className="card max-w-sm mx-auto space-y-4">
         <h1 className="text-xl font-bold text-brand-700">เข้าสู่หน้าผู้ดูแล</h1>
-        <input
-          type="password"
-          className="input"
-          placeholder="รหัสผ่านผู้ดูแล"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">ชื่อผู้ดูแล (ไม่บังคับ)</label>
+          <input
+            className="input"
+            placeholder="เช่น สมชาย"
+            value={adminName}
+            onChange={(e) => setAdminName(e.target.value)}
+          />
+          <p className="text-xs text-slate-500 mt-1">จะใช้เป็นชื่อผู้รับผิดชอบเริ่มต้นตอนรับเรื่อง</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">รหัสผ่าน *</label>
+          <input
+            type="password"
+            className="input"
+            placeholder="รหัสผ่านผู้ดูแล"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleLogin(); }}
+          />
+        </div>
+
+        {loginErr && (
+          <div className="rounded-xl bg-red-50 text-red-700 px-4 py-2.5 text-sm border border-red-200">
+            {loginErr}
+          </div>
+        )}
+
         <button
-          className="btn-primary w-full"
-          onClick={() => {
-            localStorage.setItem("admin-pass", password);
-            setAuthed(true);
-          }}
+          className="btn-primary w-full disabled:opacity-60"
+          disabled={loggingIn}
+          onClick={handleLogin}
         >
-          เข้าสู่ระบบ
+          {loggingIn ? "กำลังตรวจสอบ..." : "เข้าสู่ระบบ"}
         </button>
       </div>
     );
   }
 
-  return <AdminList password={password} onLogout={() => { localStorage.removeItem("admin-pass"); setAuthed(false); }} />;
+  return (
+    <AdminList
+      password={password}
+      adminName={adminName}
+      onLogout={() => {
+        localStorage.removeItem("admin-pass");
+        localStorage.removeItem("admin-name");
+        setAuthed(false);
+        setPassword("");
+        setAdminName("");
+      }}
+    />
+  );
 }
 
-function AdminList({ password, onLogout }: { password: string; onLogout: () => void }) {
+function AdminList({
+  password,
+  adminName,
+  onLogout
+}: {
+  password: string;
+  adminName: string;
+  onLogout: () => void;
+}) {
   const [items, setItems] = useState<Repair[]>([]);
   const [filter, setFilter] = useState<"all" | RepairStatus>("all");
   const [loading, setLoading] = useState(true);
@@ -113,8 +186,11 @@ function AdminList({ password, onLogout }: { password: string; onLogout: () => v
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-brand-700">รายการแจ้งซ่อม</h1>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h1 className="text-2xl font-bold text-brand-700">รายการแจ้งซ่อม</h1>
+          {adminName && <p className="text-sm text-slate-600 mt-0.5">👋 สวัสดี <b>{adminName}</b></p>}
+        </div>
         <div className="flex gap-2">
           <button onClick={load} className="btn-ghost text-sm">🔄 รีเฟรช</button>
           <button onClick={onLogout} className="btn-ghost text-sm">ออก</button>
@@ -146,6 +222,7 @@ function AdminList({ password, onLogout }: { password: string; onLogout: () => v
               key={r.id}
               repair={r}
               busy={busyId === r.id}
+              defaultHandler={adminName}
               onAction={updateStatus}
               onDelete={deleteRepair}
             />
@@ -159,18 +236,20 @@ function AdminList({ password, onLogout }: { password: string; onLogout: () => v
 function RepairCard({
   repair,
   busy,
+  defaultHandler,
   onAction,
   onDelete
 }: {
   repair: Repair;
   busy: boolean;
+  defaultHandler: string;
   onAction: (id: string, status: RepairStatus, extra?: { handler?: string }) => void;
   onDelete: (id: string, title: string) => void;
 }) {
   const [open, setOpen] = useState(false);
 
   function accept() {
-    const handler = prompt("ชื่อผู้รับผิดชอบ:");
+    const handler = prompt("ชื่อผู้รับผิดชอบ:", defaultHandler || "");
     if (!handler) return;
     onAction(repair.id, "accepted", { handler });
   }

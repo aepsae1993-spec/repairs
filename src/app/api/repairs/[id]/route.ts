@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { notifyStatus } from "@/lib/line";
+import { isAdminRequest } from "@/lib/admin";
 import type { Repair, RepairStatus } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-
-function isAdmin(req: Request) {
-  if (!ADMIN_PASSWORD) return true; // ถ้าไม่ตั้งรหัสไว้ = ปล่อยผ่าน (dev)
-  const pass = req.headers.get("x-admin-password");
-  return pass === ADMIN_PASSWORD;
-}
+const isAdmin = isAdminRequest;
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   if (!isAdmin(req)) {
